@@ -79,7 +79,7 @@ def main():
     
     p_act_export = sp_activity.add_parser("export", help="Export activity")
     p_act_export.add_argument("id", help="Activity ID")
-    p_act_export.add_argument("format", choices=["fit", "fit-original", "fitlog", "gpx", "kml", "tcx"], help="Format")
+    p_act_export.add_argument("format", choices=["fit", "fit-original", "fitlog", "gpx", "kml"], help="Format")
 
     p_act_upload = sp_activity.add_parser("upload", help="Upload activity")
     p_act_upload.add_argument("file", help="Path to file")
@@ -91,8 +91,8 @@ def main():
     p_metrics = subparsers.add_parser("metrics", help="Health metrics")
     p_metrics.add_argument("metric", choices=[
         "bloodGlucose", "bloodPressure", "bodyComposition", 
-        "bodyTemperature", "bodyWeight", "dailyNote", 
-        "heartRateMax", "heartRateRest", "hrv", "sleep", "stress"
+        "bodyTemperature", "dailyNote", "heartRateMax", 
+        "heartRateRest", "hrv", "mental", "sleep"
     ], help="Metric type")
     sp_metrics = p_metrics.add_subparsers(dest="action", required=True)
     
@@ -112,8 +112,8 @@ def main():
     p_met_update.add_argument("props", nargs="*", help="Properties as key=value")
 
     # Metrics Global
-    p_metrics_latest = subparsers.add_parser("metrics-latest", help="Latest metrics")
-    
+    subparsers.add_parser("metrics-latest", help="Latest metrics")
+
     # Equipment
     p_equip = subparsers.add_parser("equipment", help="Equipment")
     sp_equip = p_equip.add_subparsers(dest="action", required=True)
@@ -147,15 +147,28 @@ def main():
     p_race_delete = sp_race.add_parser("delete", help="Delete race result")
     p_race_delete.add_argument("id", help="Activity ID")
 
+    p_race_update = sp_race.add_parser("update", help="Update race result")
+    p_race_update.add_argument("id", help="Activity ID")
+    p_race_update.add_argument("props", nargs="*", help="Properties as key=value")
+
     # Settings
     p_settings = subparsers.add_parser("settings", help="Settings")
     sp_settings = p_settings.add_subparsers(dest="action", required=True)
     sp_settings.add_parser("date-range", help="List date ranges")
+    p_set_dr = sp_settings.add_parser("date-range-get", help="Get date range")
+    p_set_dr.add_argument("id", help="ID")
 
     # Tag
     p_tag = subparsers.add_parser("tag", help="Tags")
     sp_tag = p_tag.add_subparsers(dest="action", required=True)
     sp_tag.add_parser("list", help="List tags")
+    p_tag_get = sp_tag.add_parser("get", help="Get tag")
+    p_tag_get.add_argument("id", help="Tag ID")
+
+    # Statistics
+    p_stats = subparsers.add_parser("statistics", help="Statistics")
+    sp_stats = p_stats.add_subparsers(dest="action", required=True)
+    sp_stats.add_parser("current", help="Current statistics summary")
 
     args = parser.parse_args()
 
@@ -217,14 +230,24 @@ def main():
             res = make_request(f"/api/v1/raceresult/{args.id}")
         elif args.action == "delete":
             res = make_request(f"/api/v1/raceresult/{args.id}", method="DELETE")
+        elif args.action == "update":
+            res = make_request(f"/api/v1/raceresult/{args.id}", method="PATCH", data=parse_props(args.props))
 
     elif args.resource == "settings":
         if args.action == "date-range":
             res = make_request("/api/v1/settings/date-range")
+        elif args.action == "date-range-get":
+            res = make_request(f"/api/v1/settings/date-range/{args.id}")
 
     elif args.resource == "tag":
         if args.action == "list":
             res = make_request("/api/v1/tag")
+        elif args.action == "get":
+            res = make_request(f"/api/v1/tag/{args.id}")
+
+    elif args.resource == "statistics":
+        if args.action == "current":
+            res = make_request("/api/v1/statistics/current")
 
     if res is not None:
         print(json.dumps(res, indent=2))
