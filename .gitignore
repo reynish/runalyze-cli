@@ -3,3 +3,4 @@ __pycache__
 .pytest_cache
 .uv_cache
 .venv
+.coverage
