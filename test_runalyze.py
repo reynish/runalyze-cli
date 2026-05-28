@@ -328,6 +328,94 @@ def test_cli_equipment_list(mock_get_client):
     assert result.exit_code == 0
 
 @patch("runalyze.get_client")
+def test_cli_equipment_categories(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_equipment_categories.return_value = [{"id": 1, "name": "Shoes"}]
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["equipment", "categories"])
+    assert result.exit_code == 0
+    assert "Shoes" in result.stdout
+    mock_client.get_equipment_categories.assert_called_once_with(limit=None)
+
+@patch("runalyze.get_client")
+def test_cli_equipment_category(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_equipment_category.return_value = {"id": 1, "name": "Shoes"}
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["equipment", "category", "1"])
+    assert result.exit_code == 0
+    assert "Shoes" in result.stdout
+    mock_client.get_equipment_category.assert_called_once_with("1")
+
+@patch("runalyze.get_client")
+def test_cli_equipment_category_equipment(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_equipment_by_category.return_value = [{"id": 10, "name": "Nike Pegasus"}]
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["equipment", "category-equipment", "1"])
+    assert result.exit_code == 0
+    assert "Nike Pegasus" in result.stdout
+    mock_client.get_equipment_by_category.assert_called_once_with("1", limit=None)
+
+@patch("runalyze.get_client")
+def test_cli_raceresult_get(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_race_result.return_value = {"id": 1, "race": "Marathon"}
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["raceresult", "get", "1"])
+    assert result.exit_code == 0
+    assert "Marathon" in result.stdout
+    mock_client.get_race_result.assert_called_once_with("1")
+
+@patch("runalyze.get_client")
+def test_cli_raceresult_delete(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.delete_race_result.return_value = {"status": "success"}
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["raceresult", "delete", "1"])
+    assert result.exit_code == 0
+    assert "success" in result.stdout
+    mock_client.delete_race_result.assert_called_once_with("1")
+
+@patch("runalyze.get_client")
+def test_cli_raceresult_update(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.update_race_result.return_value = {"id": 1, "time": "3:00:00"}
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["raceresult", "update", "1", "time=3:00:00"])
+    assert result.exit_code == 0
+    assert "3:00:00" in result.stdout
+    mock_client.update_race_result.assert_called_once_with("1", {"time": "3:00:00"})
+
+@patch("runalyze.get_client")
+def test_cli_settings_date_range_get(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_settings_date_range.return_value = {"id": 1, "name": "2024"}
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["settings", "date-range-get", "1"])
+    assert result.exit_code == 0
+    assert "2024" in result.stdout
+    mock_client.get_settings_date_range.assert_called_once_with("1")
+
+@patch("runalyze.get_client")
+def test_cli_tag_get(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_tag.return_value = {"id": 1, "name": "Training"}
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["tag", "get", "1"])
+    assert result.exit_code == 0
+    assert "Training" in result.stdout
+    mock_client.get_tag.assert_called_once_with("1")
+
+@patch("runalyze.get_client")
 def test_cli_services(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_services.return_value = []
