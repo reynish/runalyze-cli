@@ -16,7 +16,7 @@ class RunalyzeClient:
         
         self.session = requests.Session()
         self.session.headers.update({
-            "Authorization": f"Bearer {self.token}",
+            "token": self.token,
             "Accept": "application/json",
         })
         
