@@ -553,6 +553,146 @@ def test_cli_activity_export_binary(mock_get_client):
     assert data["encoding"] == "base64"
     assert base64.b64decode(data["content"]) == b"\xde\xad\xbe\xef"
 
+# Edge case / error state tests
+
+@responses.activate
+def test_client_custom_base_url():
+    """Test client uses RUNALYZE_BASE_URL env var for base URL."""
+    client = RunalyzeClient("test_token", base_url="https://custom.example.com")
+    assert client.base_url == "https://custom.example.com"
+    responses.add(
+        responses.GET,
+        "https://custom.example.com/api/v1/test",
+        json={"status": "ok"},
+        status=200
+    )
+    res = client.request("GET", "/api/v1/test")
+    assert res == {"status": "ok"}
+    assert responses.calls[0].request.headers["token"] == "test_token"
+
+@responses.activate
+def test_client_pagination_with_limit():
+    """Test pagination respects the limit parameter."""
+    client = RunalyzeClient("test_token")
+    # Page 1 has 3 items, next page exists, but limit=2 should cut short
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/items",
+        json={
+            "hydra:member": [{"id": 1}, {"id": 2}, {"id": 3}],
+            "hydra:view": {"hydra:next": "/api/v1/items?page=2"},
+        },
+        status=200
+    )
+    res = client.request("GET", "/api/v1/items", paginate=True, limit=2)
+    assert res == [{"id": 1}, {"id": 2}]
+    # Should not have made a second request
+    assert len(responses.calls) == 1
+
+@responses.activate
+def test_client_non_json_response_graceful():
+    """Test client handles non-JSON response gracefully by returning raw bytes."""
+    client = RunalyzeClient("test_token")
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/test",
+        body=b"Not JSON",
+        content_type="text/plain",
+        status=200
+    )
+    res = client.request("GET", "/api/v1/test")
+    assert res == b"Not JSON"
+
+@responses.activate
+def test_client_non_json_response_html():
+    """Test client returns raw content for HTML response."""
+    client = RunalyzeClient("test_token")
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/test",
+        body=b"<html>Error</html>",
+        content_type="text/html",
+        status=200
+    )
+    res = client.request("GET", "/api/v1/test")
+    assert res == b"<html>Error</html>"
+
+@patch("runalyze.get_client")
+def test_cli_metrics_get_error(mock_get_client):
+    """Test CLI error handling when metrics get fails."""
+    mock_client = MagicMock()
+    mock_client.get_metric.side_effect = RunalyzeAPIError("Not Found")
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["metrics", "get", "hrv", "999"])
+    assert result.exit_code == 1
+    assert "Error: Not Found" in result.output
+
+@patch("runalyze.get_client")
+def test_cli_equipment_get_error(mock_get_client):
+    """Test CLI error handling when equipment get fails."""
+    mock_client = MagicMock()
+    mock_client.get_equipment_item.side_effect = RunalyzeAPIError("Not Found")
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["equipment", "get", "999"])
+    assert result.exit_code == 1
+    assert "Error: Not Found" in result.output
+
+@patch("runalyze.get_client")
+def test_cli_activity_get_error(mock_get_client):
+    """Test CLI error handling when activity get fails."""
+    mock_client = MagicMock()
+    mock_client.get_activity.side_effect = RunalyzeAPIError("Forbidden")
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["activity", "get", "1"])
+    assert result.exit_code == 1
+    assert "Error: Forbidden" in result.output
+
+@responses.activate
+def test_client_server_error_500():
+    """Test client raises proper error on 500 server error."""
+    client = RunalyzeClient("test_token")
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/test",
+        body="Internal Server Error",
+        status=500
+    )
+    with pytest.raises(RunalyzeAPIError) as excinfo:
+        client.request("GET", "/api/v1/test")
+    assert "500" in str(excinfo.value)
+
+@responses.activate
+def test_client_pagination_with_limit_exact():
+    """Test pagination limit exactly matches available items."""
+    client = RunalyzeClient("test_token")
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/items",
+        json={
+            "hydra:member": [{"id": 1}, {"id": 2}],
+            "hydra:view": {"hydra:next": "/api/v1/items?page=2"},
+        },
+        status=200
+    )
+    res = client.request("GET", "/api/v1/items", paginate=True, limit=2)
+    assert res == [{"id": 1}, {"id": 2}]
+    assert len(responses.calls) == 1
+
+@patch("runalyze.get_client")
+def test_cli_equipment_get(mock_get_client):
+    """Test CLI equipment get command."""
+    mock_client = MagicMock()
+    mock_client.get_equipment_item.return_value = {"id": 1, "name": "Nike Pegasus"}
+    mock_get_client.return_value = mock_client
+    
+    result = runner.invoke(app, ["equipment", "get", "1"])
+    assert result.exit_code == 0
+    assert "Nike Pegasus" in result.stdout
+    mock_client.get_equipment_item.assert_called_once_with("1")
+
 @patch("runalyze.get_client")
 def test_cli_activity_export_text(mock_get_client):
     mock_client = MagicMock()
