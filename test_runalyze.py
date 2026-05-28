@@ -54,7 +54,7 @@ def test_client_request_success():
     )
     res = client.request("GET", "/api/v1/test")
     assert res == {"status": "ok"}
-    assert responses.calls[0].request.headers["Authorization"] == "Bearer test_token"
+    assert responses.calls[0].request.headers["token"] == "test_token"
 
 @responses.activate
 def test_client_request_204():
