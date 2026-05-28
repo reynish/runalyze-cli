@@ -1,6 +1,7 @@
 import json
 import os
 
+
 def load_token():
     if os.path.exists(".env"):
         with open(".env") as f:
@@ -8,6 +9,7 @@ def load_token():
                 if line.startswith("RUNALYZE_AUTH_TOKEN="):
                     return line.split("=", 1)[1].strip()
     return os.getenv("RUNALYZE_AUTH_TOKEN")
+
 
 def parse_props(props):
     data = {}
