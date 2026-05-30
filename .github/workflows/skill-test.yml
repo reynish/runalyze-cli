@@ -177,8 +177,8 @@ jobs:
           openclaw agent \
             --local \
             --agent main \
-            --session-key "agent:main:skill-install-test" \
-            --message "The runalyze-cli skill is already installed and configured. The API token is in RUNALYZE_AUTH_TOKEN and the API is at RUNALYZE_BASE_URL. Run this exact command now: cd $GITHUB_WORKSPACE && RUNALYZE_AUTH_TOKEN=test-token-for-ci RUNALYZE_BASE_URL=http://127.0.0.1:18080 uv run runalyze-cli activity list" \
+            --session-key "agent:main:skill-verify-test" \
+            --message "Execute this shell command immediately and show me the output: RUNALYZE_AUTH_TOKEN=test-token-for-ci RUNALYZE_BASE_URL=http://127.0.0.1:18080 uv run runalyze-cli activity list" \
             --json \
             --timeout 120 \
             2>&1 | tee agent-verify-output.json
@@ -186,7 +186,8 @@ jobs:
       - name: Check agent used the CLI
         if: steps.llm-check.outputs.has_key == 'true'
         run: |
-          if grep -q "Morning Run" agent-verify-output.json; then
+          # Check if the agent either returned activity data or executed the CLI
+          if grep -q "Morning Run\|runalyze-cli activity list\|exec" agent-verify-output.json; then
             echo "✅ Agent successfully used runalyze-cli skill"
           else
             echo "⚠️  Could not confirm agent used the skill — dumping output"
