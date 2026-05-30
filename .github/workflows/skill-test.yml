@@ -1,0 +1,183 @@
+name: Skill Integration Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  # ----------------------------------------------------------------
+  # Job 1: Verify the CLI + mock API work (no LLM needed)
+  # ----------------------------------------------------------------
+  mock-api-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout runalyze-cli
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --python 3.12
+
+      - name: Start mock Runalyze API
+        run: |
+          uv run python tests/mock_runalyze_api.py 18080 &
+          sleep 1
+          curl -sf http://127.0.0.1:18080/api/v1/my/services | jq .
+
+      - name: Verify runalyze-cli against mock
+        env:
+          RUNALYZE_AUTH_TOKEN: test-token-for-ci
+          RUNALYZE_BASE_URL: http://127.0.0.1:18080
+        run: |
+          echo "--- services ---"
+          uv run runalyze-cli services
+
+          echo "--- activity list ---"
+          uv run runalyze-cli activity list
+
+          echo "--- activity get 1 ---"
+          uv run runalyze-cli activity get 1
+
+          echo "--- activity export 1 gpx ---"
+          uv run runalyze-cli activity export 1 gpx
+
+          echo "--- metrics list heartRateRest ---"
+          uv run runalyze-cli metrics list heartRateRest
+
+          echo "--- metrics-latest ---"
+          uv run runalyze-cli metrics-latest
+
+          echo "--- equipment list ---"
+          uv run runalyze-cli equipment list
+
+          echo "--- statistics current ---"
+          uv run runalyze-cli statistics current
+
+      - name: Stop mock server
+        if: always()
+        run: fuser -k 18080/tcp 2>/dev/null || true
+
+  # ----------------------------------------------------------------
+  # Job 2: Full agent integration test (requires LLM secrets)
+  # ----------------------------------------------------------------
+  # Configure these secrets in Settings → Secrets and variables → Actions:
+  #
+  #   LLM_API_KEY     (required)  – Your provider's API key
+  #   LLM_BASE_URL     (optional)  – Custom base URL for OpenAI-compatible APIs
+  #   LLM_MODEL        (optional)  – Model string (default: openai/gpt-4.1-mini)
+  #
+  # Examples:
+  #   OpenAI:    LLM_API_KEY=sk-...                          LLM_MODEL=openai/gpt-4.1-mini
+  #   DeepSeek:  LLM_API_KEY=dsk-...  LLM_BASE_URL=https://api.deepseek.com  LLM_MODEL=openai/deepseek-chat
+  #   Ollama:    LLM_API_KEY=ollama   LLM_BASE_URL=http://host.docker.internal:11434/v1  LLM_MODEL=openai/qwen3
+  #
+  agent-skill-test:
+    runs-on: ubuntu-latest
+    needs: mock-api-test
+    timeout-minutes: 15
+    if: ${{ secrets.LLM_API_KEY != '' }}
+
+    steps:
+      - name: Checkout runalyze-cli
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install runalyze-cli
+        run: uv sync --python 3.12
+
+      - name: Start mock Runalyze API
+        run: |
+          uv run python tests/mock_runalyze_api.py 18080 &
+          sleep 1
+          curl -sf http://127.0.0.1:18080/api/v1/my/services | jq .
+
+      - name: Install Node.js (for OpenClaw)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install OpenClaw
+        run: npm install -g openclaw
+
+      - name: Configure OpenClaw agent auth
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        run: |
+          # Set the API key
+          openclaw config set models.providers.openai.apiKey "$LLM_API_KEY"
+
+          # Set custom base URL if provided (for DeepSeek, Ollama, etc.)
+          if [ -n "$LLM_BASE_URL" ]; then
+            openclaw config set models.providers.openai.baseUrl "$LLM_BASE_URL"
+          fi
+
+          # Set model (defaults to openai/gpt-4.1-mini if not specified)
+          MODEL="${LLM_MODEL:-openai/gpt-4.1-mini}"
+          openclaw config set agents.defaults.model "$MODEL"
+
+      - name: Install runalyze-cli as OpenClaw skill
+        run: |
+          openclaw skills install "$GITHUB_WORKSPACE" --as runalyze-cli --force
+
+      - name: Feed install prompt to OpenClaw agent
+        env:
+          RUNALYZE_AUTH_TOKEN: test-token-for-ci
+          RUNALYZE_BASE_URL: http://127.0.0.1:18080
+        run: |
+          # Extract the prompt from install.md (````text ... ```` fences)
+          PROMPT=$(sed -n '/^````text$/,/^````$/p' install.md | sed '1d;$d')
+
+          openclaw agent \
+            --local \
+            --agent main \
+            --session-key "agent:main:skill-install-test" \
+            --message "$PROMPT" \
+            --json \
+            --timeout 300 \
+            2>&1 | tee agent-install-output.json
+
+      - name: Verify agent can use the skill
+        env:
+          RUNALYZE_AUTH_TOKEN: test-token-for-ci
+          RUNALYZE_BASE_URL: http://127.0.0.1:18080
+        run: |
+          openclaw agent \
+            --local \
+            --agent main \
+            --session-key "agent:main:skill-install-test" \
+            --message "Using the runalyze skill, list my activities and show me the current statistics. Reply with just the JSON output." \
+            --json \
+            --timeout 120 \
+            2>&1 | tee agent-verify-output.json
+
+      - name: Check agent used the CLI
+        run: |
+          if grep -q "Morning Run" agent-verify-output.json; then
+            echo "✅ Agent successfully used runalyze-cli skill"
+          else
+            echo "⚠️  Could not confirm agent used the skill — dumping output"
+            echo "--- Agent output ---"
+            cat agent-verify-output.json
+            exit 1
+          fi
+
+      - name: Stop mock server
+        if: always()
+        run: fuser -k 18080/tcp 2>/dev/null || true
