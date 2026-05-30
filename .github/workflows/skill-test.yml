@@ -178,7 +178,7 @@ jobs:
             --local \
             --agent main \
             --session-key "agent:main:skill-install-test" \
-            --message "Using the runalyze skill, list my activities and show me the current statistics. Reply with just the JSON output." \
+            --message "The runalyze-cli skill is already installed and configured. The API token is in RUNALYZE_AUTH_TOKEN and the API is at RUNALYZE_BASE_URL. Run this exact command now: cd $GITHUB_WORKSPACE && RUNALYZE_AUTH_TOKEN=test-token-for-ci RUNALYZE_BASE_URL=http://127.0.0.1:18080 uv run runalyze-cli activity list" \
             --json \
             --timeout 120 \
             2>&1 | tee agent-verify-output.json
