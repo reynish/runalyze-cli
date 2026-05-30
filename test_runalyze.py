@@ -946,16 +946,12 @@ def test_agent_prompt_log_resting_hr(mock_get_client):
     }
     mock_get_client.return_value = mock_client
 
-    result = runner.invoke(
-        app, ["metrics", "create", "heartRateRest", "value=58"]
-    )
+    result = runner.invoke(app, ["metrics", "create", "heartRateRest", "value=58"])
     assert result.exit_code == 0
     data = json.loads(result.stdout)
     assert data["value"] == 58
     assert data["type"] == "heartRateRest"
-    mock_client.create_metric.assert_called_once_with(
-        "heartRateRest", {"value": 58}
-    )
+    mock_client.create_metric.assert_called_once_with("heartRateRest", {"value": 58})
 
 
 @patch("runalyze_cli.cli.get_client")
