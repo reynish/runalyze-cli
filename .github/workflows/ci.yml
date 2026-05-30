@@ -25,7 +25,7 @@ jobs:
         run: uv sync --python ${{ matrix.python-version }}
 
       - name: Run tests
-        run: uv run pytest test_runalyze.py -v
+        run: uv run pytest -v
 
   lint:
     runs-on: ubuntu-latest
@@ -39,7 +39,7 @@ jobs:
         run: uv sync
 
       - name: Run ruff check
-        run: uv run ruff check .
+        run: uv run ruff check src/ test_runalyze.py
 
       - name: Run ruff format check
-        run: uv run ruff format --check .
+        run: uv run ruff format --check src/ test_runalyze.py

@@ -1,22 +1,32 @@
 [project]
 name = "runalyze-cli"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-first CLI for the Runalyze API"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
 dependencies = [
-    "pytest",
     "requests>=2.34.0",
-    "responses>=0.26.0",
     "typer>=0.12.0",
 ]
 
 [project.scripts]
-runalyze-cli = "runalyze:main"
+runalyze-cli = "runalyze_cli.cli:main"
 
 [dependency-groups]
 dev = [
+    "pytest>=8.0",
     "pytest-cov>=7.1.0",
+    "responses>=0.26.0",
     "ruff>=0.11.0",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/runalyze_cli"]
+
+[tool.ruff]
+src = ["src"]

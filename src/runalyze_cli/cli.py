@@ -2,12 +2,13 @@
 import base64
 import json
 import sys
-import typer
-from typing import Optional, List
 from functools import wraps
+from typing import List, Optional
 
-from client import RunalyzeClient, RunalyzeAPIError
-from utils import load_token, parse_props
+import typer
+
+from runalyze_cli.client import RunalyzeAPIError, RunalyzeClient
+from runalyze_cli.utils import load_token, parse_props
 
 app = typer.Typer()
 activity_app = typer.Typer()

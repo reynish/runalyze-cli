@@ -1,17 +1,14 @@
-import json
-import os
-import sys
 import base64
-from unittest.mock import patch, MagicMock, mock_open
+import json
+from unittest.mock import MagicMock, mock_open, patch
+
 import pytest
 import responses
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from typer.testing import CliRunner
-from utils import parse_props, load_token
-from client import RunalyzeClient, RunalyzeAPIError
-from runalyze import app
+
+from runalyze_cli.client import RunalyzeAPIError, RunalyzeClient
+from runalyze_cli.cli import app
+from runalyze_cli.utils import load_token, parse_props
 
 runner = CliRunner()
 
@@ -376,7 +373,7 @@ def test_client_pagination_fallback_list():
 
 
 # CLI Tests
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_activity_list(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_activities.return_value = [{"id": 1, "title": "Run"}]
@@ -388,7 +385,7 @@ def test_cli_activity_list(mock_get_client):
     mock_client.get_activities.assert_called_once()
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_activity_get(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_activity.return_value = {"id": 1}
@@ -399,7 +396,7 @@ def test_cli_activity_get(mock_get_client):
     assert '"id": 1' in result.stdout
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_activity_upload(mock_get_client):
     mock_client = MagicMock()
     mock_client.upload_activity.return_value = {"id": "up123"}
@@ -412,7 +409,7 @@ def test_cli_activity_upload(mock_get_client):
     assert "up123" in result.stdout
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_activity_upload_status(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_upload_status.return_value = {"status": "processed"}
@@ -423,7 +420,7 @@ def test_cli_activity_upload_status(mock_get_client):
     assert "processed" in result.stdout
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_metrics_list(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_metrics.return_value = []
@@ -434,7 +431,7 @@ def test_cli_metrics_list(mock_get_client):
     mock_client.get_metrics.assert_called_with("hrv", limit=None)
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_metrics_create(mock_get_client):
     mock_client = MagicMock()
     mock_client.create_metric.return_value = {"status": "created"}
@@ -446,7 +443,7 @@ def test_cli_metrics_create(mock_get_client):
     mock_client.create_metric.assert_called_with("heartRateRest", {"value": 60})
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_metrics_delete(mock_get_client):
     mock_client = MagicMock()
     mock_client.delete_metric.return_value = {"status": "deleted"}
@@ -457,7 +454,7 @@ def test_cli_metrics_delete(mock_get_client):
     assert "deleted" in result.stdout
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_metrics_update(mock_get_client):
     mock_client = MagicMock()
     mock_client.update_metric.return_value = {"status": "updated"}
@@ -468,7 +465,7 @@ def test_cli_metrics_update(mock_get_client):
     assert "updated" in result.stdout
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_metrics_latest(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_latest_metrics.return_value = {}
@@ -478,7 +475,7 @@ def test_cli_metrics_latest(mock_get_client):
     assert result.exit_code == 0
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_equipment_list(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_equipment.return_value = []
@@ -488,7 +485,7 @@ def test_cli_equipment_list(mock_get_client):
     assert result.exit_code == 0
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_equipment_categories(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_equipment_categories.return_value = [{"id": 1, "name": "Shoes"}]
@@ -500,7 +497,7 @@ def test_cli_equipment_categories(mock_get_client):
     mock_client.get_equipment_categories.assert_called_once_with(limit=None)
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_equipment_category(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_equipment_category.return_value = {"id": 1, "name": "Shoes"}
@@ -512,7 +509,7 @@ def test_cli_equipment_category(mock_get_client):
     mock_client.get_equipment_category.assert_called_once_with("1")
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_equipment_category_equipment(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_equipment_by_category.return_value = [
@@ -526,7 +523,7 @@ def test_cli_equipment_category_equipment(mock_get_client):
     mock_client.get_equipment_by_category.assert_called_once_with("1", limit=None)
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_raceresult_get(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_race_result.return_value = {"id": 1, "race": "Marathon"}
@@ -538,7 +535,7 @@ def test_cli_raceresult_get(mock_get_client):
     mock_client.get_race_result.assert_called_once_with("1")
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_raceresult_delete(mock_get_client):
     mock_client = MagicMock()
     mock_client.delete_race_result.return_value = {"status": "success"}
@@ -550,7 +547,7 @@ def test_cli_raceresult_delete(mock_get_client):
     mock_client.delete_race_result.assert_called_once_with("1")
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_raceresult_update(mock_get_client):
     mock_client = MagicMock()
     mock_client.update_race_result.return_value = {"id": 1, "time": "3:00:00"}
@@ -562,7 +559,7 @@ def test_cli_raceresult_update(mock_get_client):
     mock_client.update_race_result.assert_called_once_with("1", {"time": "3:00:00"})
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_settings_date_range_get(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_settings_date_range.return_value = {"id": 1, "name": "2024"}
@@ -574,7 +571,7 @@ def test_cli_settings_date_range_get(mock_get_client):
     mock_client.get_settings_date_range.assert_called_once_with("1")
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_tag_get(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_tag.return_value = {"id": 1, "name": "Training"}
@@ -586,7 +583,7 @@ def test_cli_tag_get(mock_get_client):
     mock_client.get_tag.assert_called_once_with("1")
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_services(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_services.return_value = []
@@ -596,7 +593,7 @@ def test_cli_services(mock_get_client):
     assert result.exit_code == 0
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_sync_changes(mock_get_client):
     mock_client = MagicMock()
     mock_client.sync_changes.return_value = {"status": "synced"}
@@ -606,7 +603,7 @@ def test_cli_sync_changes(mock_get_client):
     assert result.exit_code == 0
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_raceresult_list(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_race_results.return_value = []
@@ -616,7 +613,7 @@ def test_cli_raceresult_list(mock_get_client):
     assert result.exit_code == 0
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_settings_date_range(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_settings_date_ranges.return_value = []
@@ -626,7 +623,7 @@ def test_cli_settings_date_range(mock_get_client):
     assert result.exit_code == 0
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_tag_list(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_tags.return_value = []
@@ -636,7 +633,7 @@ def test_cli_tag_list(mock_get_client):
     assert result.exit_code == 0
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_statistics_current(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_current_statistics.return_value = {}
@@ -692,7 +689,7 @@ def test_client_rate_limiting_retry():
     assert len(responses.calls) == 2
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_error_handling(mock_get_client):
     mock_client = MagicMock()
     mock_client.get_activities.side_effect = RunalyzeAPIError("API Error")
@@ -717,7 +714,7 @@ def test_client_binary_response():
     assert res == b"FITDATA"
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_activity_export_binary(mock_get_client):
     mock_client = MagicMock()
     mock_client.export_activity.return_value = b"\xde\xad\xbe\xef"  # Binary
@@ -800,7 +797,7 @@ def test_client_non_json_response_html():
     assert res == b"<html>Error</html>"
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_metrics_get_error(mock_get_client):
     """Test CLI error handling when metrics get fails."""
     mock_client = MagicMock()
@@ -812,7 +809,7 @@ def test_cli_metrics_get_error(mock_get_client):
     assert "Error: Not Found" in result.output
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_equipment_get_error(mock_get_client):
     """Test CLI error handling when equipment get fails."""
     mock_client = MagicMock()
@@ -824,7 +821,7 @@ def test_cli_equipment_get_error(mock_get_client):
     assert "Error: Not Found" in result.output
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_activity_get_error(mock_get_client):
     """Test CLI error handling when activity get fails."""
     mock_client = MagicMock()
@@ -869,7 +866,7 @@ def test_client_pagination_with_limit_exact():
     assert len(responses.calls) == 1
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_equipment_get(mock_get_client):
     """Test CLI equipment get command."""
     mock_client = MagicMock()
@@ -882,7 +879,7 @@ def test_cli_equipment_get(mock_get_client):
     mock_client.get_equipment_item.assert_called_once_with("1")
 
 
-@patch("runalyze.get_client")
+@patch("runalyze_cli.cli.get_client")
 def test_cli_activity_export_text(mock_get_client):
     mock_client = MagicMock()
     mock_client.export_activity.return_value = b"<gpx></gpx>"  # Text in bytes
