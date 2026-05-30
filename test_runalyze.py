@@ -879,6 +879,85 @@ def test_cli_equipment_get(mock_get_client):
     mock_client.get_equipment_item.assert_called_once_with("1")
 
 
+# --- Agent-skill-test: "Show me my recent runs" ---
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_agent_prompt_recent_runs(mock_get_client):
+    """Agent prompt: 'Show me my recent runs'
+
+    Per SKILL.md, this maps to: uv run runalyze-cli activity list --limit 10
+    """
+    mock_client = MagicMock()
+    mock_client.get_activities.return_value = [
+        {"id": 1, "title": "Morning Run", "sport": "running"},
+        {"id": 2, "title": "Evening Jog", "sport": "running"},
+    ]
+    mock_get_client.return_value = mock_client
+
+    result = runner.invoke(app, ["activity", "list", "--limit", "10"])
+    assert result.exit_code == 0
+    assert "Morning Run" in result.stdout
+    assert "Evening Jog" in result.stdout
+    mock_client.get_activities.assert_called_once_with(limit=10)
+
+
+# --- Agent-skill-test: "What metrics have I tracked recently?" ---
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_agent_prompt_recent_metrics(mock_get_client):
+    """Agent prompt: 'What metrics have I tracked recently?'
+
+    Per SKILL.md, this maps to: uv run runalyze-cli metrics-latest
+    """
+    mock_client = MagicMock()
+    mock_client.get_latest_metrics.return_value = {
+        "heartRateRest": {"value": 58, "date": "2026-05-30"},
+        "hrv": {"value": 45, "date": "2026-05-29"},
+        "sleep": {"duration": 7.5, "date": "2026-05-29"},
+    }
+    mock_get_client.return_value = mock_client
+
+    result = runner.invoke(app, ["metrics-latest"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["heartRateRest"]["value"] == 58
+    assert data["hrv"]["value"] == 45
+    assert data["sleep"]["duration"] == 7.5
+    mock_client.get_latest_metrics.assert_called_once()
+
+
+# --- Agent-skill-test: "Log my resting heart rate" ---
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_agent_prompt_log_resting_hr(mock_get_client):
+    """Agent prompt: 'Log my resting heart rate as 58'
+
+    Per SKILL.md, this maps to:
+        uv run runalyze-cli metrics create heartRateRest value=58
+    """
+    mock_client = MagicMock()
+    mock_client.create_metric.return_value = {
+        "id": 42,
+        "value": 58,
+        "type": "heartRateRest",
+    }
+    mock_get_client.return_value = mock_client
+
+    result = runner.invoke(
+        app, ["metrics", "create", "heartRateRest", "value=58"]
+    )
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["value"] == 58
+    assert data["type"] == "heartRateRest"
+    mock_client.create_metric.assert_called_once_with(
+        "heartRateRest", {"value": 58}
+    )
+
+
 @patch("runalyze_cli.cli.get_client")
 def test_cli_activity_export_text(mock_get_client):
     mock_client = MagicMock()
