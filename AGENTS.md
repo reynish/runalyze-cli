@@ -14,7 +14,23 @@ We use `uv` for all environment management, dependency resolution, and script ex
 *   **Running Tests**: Always run tests using `uv run pytest`.
 *   **Dependencies**: Manage dependencies using `uv add` or `uv pip`. Do not use standard `pip` or `venv`.
 
-## 3. AI-First CLI Design
+## 3. Pre-Push Lint & Format Gate
+Before committing and pushing, you **MUST** run both lint and format checks and ensure they pass:
+
+```bash
+uv run ruff check src/ test_runalyze.py
+uv run ruff format --check src/ test_runalyze.py
+```
+
+If `ruff format --check` reports files would be reformatted, run `uv run ruff format` to auto-fix:
+
+```bash
+uv run ruff format src/ test_runalyze.py
+```
+
+Never push code that fails these checks — CI enforces the same gates and will reject unlinted/unformatted code.
+
+## 4. AI-First CLI Design
 Since this CLI is consumed by agents, the design must prioritize machine readability:
 *   **Machine-Readable Output**: Default to outputting structured JSON (`json.dumps`). Avoid pretty-printing tables or interactive prompts unless explicitly requested.
 *   **Clear Error Handling**: Exit with appropriate non-zero status codes on failure. Output errors to `stderr` in a clear, consistent format.
