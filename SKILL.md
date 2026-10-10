@@ -39,12 +39,16 @@ Working with recorded activities (runs, rides, swims, etc.).
 # List all activities (returns JSON array)
 uv run runalyze-cli activity list [--limit N]
 
-# Get a single activity by ID
-uv run runalyze-cli activity get <id>
+# Get a single activity by ID (use --trackdata to include GPS, HR, pace streams)
+uv run runalyze-cli activity get <id> [--trackdata]
 
 # Export an activity in a specific format
-# Formats: fit, fit-original, fitlog, gpx, kml, tcx
+# Formats: csv, fit, fit-original, fitlog, gpx, kml, tcx
 uv run runalyze-cli activity export <id> <format>
+
+# Export activity social share image (portrait or square)
+# Returns base64 or saves directly to a file
+uv run runalyze-cli activity share-image <id> <format> [--output <file_path>]
 
 # Upload an activity file (FIT, GPX, TCX, etc.)
 uv run runalyze-cli activity upload <file_path>
@@ -53,20 +57,20 @@ uv run runalyze-cli activity upload <file_path>
 uv run runalyze-cli activity upload-status <upload_id>
 ```
 
-**Export behavior**: Text-based formats (GPX, TCX, KML) are returned as UTF-8 strings in the `content` field. Binary formats (FIT) are base64-encoded with an `"encoding": "base64"` field. To decode a binary export, use `base64.b64decode(data["content"])`.
+**Export behavior**: Text-based formats (GPX, TCX, KML, CSV) are returned as UTF-8 strings in the `content` field. Binary formats (FIT) and social share images are base64-encoded with an `"encoding": "base64"` field unless `--output` is provided. To decode a binary export, use `base64.b64decode(data["content"])`.
 
 **Upload flow**: Uploading is asynchronous. The `upload` command returns an upload ID. Poll `upload-status` with that ID until processing completes.
 
 ### Health Metrics
 
-Reading and writing health data. Metric types are: `bloodGlucose`, `bloodPressure`, `bodyComposition`, `bodyTemperature`, `dailyNote`, `heartRateMax`, `heartRateRest`, `hrv`, `mental`, `sleep`.
+Reading and writing health data. Metric types are: `bloodGlucose`, `bloodPressure`, `bodyComposition`, `bodyTemperature`, `dailyNote`, `disease`, `heartRateMax`, `heartRateRest`, `hrv`, `menstrualCycle`, `mental`, `sleep`.
 
 ```bash
 # List metrics of a given type
 uv run runalyze-cli metrics list <metric_type> [--limit N]
 
-# Get a single metric entry
-uv run runalyze-cli metrics get <metric_type> <id>
+# Get a single metric entry (id or date depending on metric)
+uv run runalyze-cli metrics get <metric_type> <id_or_date>
 
 # Create a new metric entry
 # Props are key=value pairs; JSON values are parsed automatically
@@ -84,11 +88,42 @@ uv run runalyze-cli metrics update <metric_type> <id> [key=value ...]
 # Delete a metric
 uv run runalyze-cli metrics delete <metric_type> <id>
 
+# Bulk import health data via JSON file or key=value props
+uv run runalyze-cli metrics bulk-upload [--file <file_path>] [key=value ...]
+
+# Get menstrual cycle forecast
+uv run runalyze-cli metrics forecast
+
 # Get latest values across all metric types
+uv run runalyze-cli metrics latest
 uv run runalyze-cli metrics-latest
 ```
 
 **Props parsing**: Key-value arguments use `key=value` syntax. Values that are valid JSON (numbers, booleans, `null`, arrays, objects) are parsed as JSON types. Everything else stays as a string. For example: `value=60` → integer 60, `note="felt good"` → string "felt good", `tags=["a","b"]` → list.
+
+### Health: Disease & Pain Levels
+
+Track injuries, illnesses, and associated daily pain levels.
+
+```bash
+# List recorded diseases / injuries
+uv run runalyze-cli disease list [--limit N]
+
+# Get disease details
+uv run runalyze-cli disease get <id>
+
+# Create a disease entry (start_date and title required)
+uv run runalyze-cli disease create title="Runner's Knee" start_date="2026-03-01" type="injury"
+
+# List pain levels recorded for a disease
+uv run runalyze-cli disease pain-level-list <disease_id> [--limit N]
+
+# Get a specific pain level record
+uv run runalyze-cli disease pain-level-get <disease_id> <pain_level_id>
+
+# Log a pain level for a disease (date and pain_level 0-10 required)
+uv run runalyze-cli disease pain-level-create <disease_id> date="2026-03-02" pain_level=4 note="Mild ache"
+```
 
 ### Equipment
 
@@ -101,11 +136,29 @@ uv run runalyze-cli equipment list [--limit N]
 # Get a single equipment item
 uv run runalyze-cli equipment get <id>
 
+# Create new equipment item
+uv run runalyze-cli equipment create name="Nike Vaporfly" category_id=1 date_start="2026-01-01"
+
+# Update an equipment item
+uv run runalyze-cli equipment update <id> notes="Retired after marathon" date_end="2026-04-01"
+
+# Delete an equipment item
+uv run runalyze-cli equipment delete <id>
+
 # List equipment categories (e.g., "Shoes", "Bikes")
 uv run runalyze-cli equipment categories [--limit N]
 
 # Get a specific category
 uv run runalyze-cli equipment category <id>
+
+# Create an equipment category
+uv run runalyze-cli equipment category-create name="Trail Shoes" input_type="single"
+
+# Update an equipment category
+uv run runalyze-cli equipment category-update <id> name="Trail Running Shoes"
+
+# Delete an equipment category
+uv run runalyze-cli equipment category-delete <id>
 
 # List all equipment items within a category
 uv run runalyze-cli equipment category-equipment <category_id> [--limit N]
@@ -149,6 +202,15 @@ uv run runalyze-cli settings date-range [--limit N]
 
 # Get a specific date range
 uv run runalyze-cli settings date-range-get <id>
+
+# Create a date range setting
+uv run runalyze-cli settings date-range-create name="Current Year" rangeType=3 rangeCount=1
+
+# Update a date range setting
+uv run runalyze-cli settings date-range-update <id> name="Year 2026"
+
+# Delete a date range setting
+uv run runalyze-cli settings date-range-delete <id>
 ```
 
 ### Statistics
@@ -156,6 +218,9 @@ uv run runalyze-cli settings date-range-get <id>
 ```bash
 # Get current training statistics
 uv run runalyze-cli statistics current
+
+# Get race prognosis (predicted times across standard race distances)
+uv run runalyze-cli statistics prognosis
 ```
 
 ### Services & Sync

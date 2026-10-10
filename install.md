@@ -62,20 +62,35 @@ cd ~/skills/runalyze-cli && uv run runalyze-cli <command>
 | Area | Command | Description |
 |---|---|---|
 | Activities | `activity list [--limit N]` | List activities |
-| | `activity get <id>` | Get a single activity |
-| | `activity export <id> <fmt>` | Export activity (fit, gpx, tcx, kml, fitlog) |
+| | `activity get <id> [--trackdata]` | Get a single activity (with optional GPS/HR trackdata) |
+| | `activity export <id> <fmt>` | Export activity (csv, fit, fit-original, fitlog, gpx, kml, tcx) |
+| | `activity share-image <id> <fmt> [--output path]` | Export social image (portrait, square) |
 | | `activity upload <file>` | Upload an activity file |
 | | `activity upload-status <id>` | Check upload status |
 | Metrics | `metrics list <type> [--limit N]` | List health metrics |
-| | `metrics get <type> <id>` | Get a specific metric |
+| | `metrics get <type> <id_or_date>` | Get a specific metric |
 | | `metrics create <type> key=value ...` | Create a metric |
 | | `metrics update <type> <id> key=value ...` | Update a metric |
 | | `metrics delete <type> <id>` | Delete a metric |
-| | `metrics-latest` | Get latest metrics |
+| | `metrics bulk-upload [--file path] [key=value ...]` | Bulk upload health metrics |
+| | `metrics forecast` | Get menstrual cycle forecast |
+| | `metrics latest` / `metrics-latest` | Get latest metrics |
+| Disease | `disease list [--limit N]` | List recorded diseases / injuries |
+| | `disease get <id>` | Get disease details |
+| | `disease create key=value ...` | Create disease entry |
+| | `disease pain-level-list <id> [--limit N]` | List pain levels for disease |
+| | `disease pain-level-get <id> <pl_id>` | Get specific pain level |
+| | `disease pain-level-create <id> key=value ...` | Log pain level for disease |
 | Equipment | `equipment list [--limit N]` | List equipment |
 | | `equipment get <id>` | Get equipment item |
+| | `equipment create key=value ...` | Create equipment item |
+| | `equipment update <id> key=value ...` | Update equipment item |
+| | `equipment delete <id>` | Delete equipment item |
 | | `equipment categories` | List equipment categories |
 | | `equipment category <id>` | Get category |
+| | `equipment category-create key=value ...` | Create equipment category |
+| | `equipment category-update <id> key=value ...` | Update equipment category |
+| | `equipment category-delete <id>` | Delete equipment category |
 | | `equipment category-equipment <id>` | List equipment in category |
 | Race Results | `raceresult list [--limit N]` | List race results |
 | | `raceresult get <id>` | Get race result |
@@ -85,13 +100,17 @@ cd ~/skills/runalyze-cli && uv run runalyze-cli <command>
 | | `tag get <id>` | Get tag |
 | Settings | `settings date-range [--limit N]` | List date ranges |
 | | `settings date-range-get <id>` | Get date range |
+| | `settings date-range-create key=value ...` | Create date range |
+| | `settings date-range-update <id> key=value ...` | Update date range |
+| | `settings date-range-delete <id>` | Delete date range |
 | Stats | `statistics current` | Get current statistics |
+| | `statistics prognosis` | Get race prognosis |
 | System | `services` | List available API services |
 | | `sync-changes key=value ...` | Sync changes |
 
 ### Metric types
 
-Valid metric types: `bloodGlucose`, `bloodPressure`, `bodyComposition`, `bodyTemperature`, `dailyNote`, `heartRateMax`, `heartRateRest`, `hrv`, `mental`, `sleep`
+Valid metric types: `bloodGlucose`, `bloodPressure`, `bodyComposition`, `bodyTemperature`, `dailyNote`, `disease`, `heartRateMax`, `heartRateRest`, `hrv`, `menstrualCycle`, `mental`, `sleep`
 
 ### Important notes
 

@@ -43,6 +43,7 @@ class RunalyzeClient:
         self,
         method,
         path,
+        params=None,
         data=None,
         headers=None,
         is_binary=False,
@@ -50,20 +51,34 @@ class RunalyzeClient:
         limit=None,
     ):
         url = self.base_url + path
+        req_headers = dict(headers) if headers else {}
+        if method == "PATCH" and "Content-Type" not in req_headers:
+            req_headers["Content-Type"] = "application/merge-patch+json"
 
         try:
             results = []
+            is_first_page = True
 
             while True:
                 current_url = url
+                current_params = params if is_first_page else None
+                is_first_page = False
 
                 if is_binary:
                     response = self.session.request(
-                        method, current_url, data=data, headers=headers
+                        method,
+                        current_url,
+                        data=data,
+                        headers=req_headers if req_headers else None,
+                        params=current_params,
                     )
                 else:
                     response = self.session.request(
-                        method, current_url, json=data, headers=headers
+                        method,
+                        current_url,
+                        json=data,
+                        headers=req_headers if req_headers else None,
+                        params=current_params,
                     )
 
                 response.raise_for_status()
@@ -125,11 +140,17 @@ class RunalyzeClient:
     def get_activities(self, limit=None):
         return self.request("GET", "/api/v1/activity", paginate=True, limit=limit)
 
-    def get_activity(self, activity_id):
-        return self.request("GET", f"/api/v1/activity/{activity_id}")
+    def get_activity(self, activity_id, trackdata=False):
+        params = {"trackdata": "true"} if trackdata else None
+        return self.request("GET", f"/api/v1/activity/{activity_id}", params=params)
 
     def export_activity(self, activity_id, format):
         return self.request("GET", f"/api/v1/activity/{activity_id}/{format}")
+
+    def get_activity_share_image(self, activity_id, format):
+        return self.request(
+            "GET", f"/api/v1/activity/{activity_id}/share/image/{format}"
+        )
 
     def upload_activity(self, file_content):
         return self.request(
@@ -166,20 +187,78 @@ class RunalyzeClient:
     def get_latest_metrics(self):
         return self.request("GET", "/api/v1/metrics/latest")
 
+    def bulk_upload_metrics(self, data):
+        return self.request("POST", "/api/v1/metrics", data=data)
+
+    def get_menstrual_cycle_forecast(self):
+        return self.request("GET", "/api/v1/metrics/menstrualCycleForecast")
+
+    def get_diseases(self, limit=None):
+        return self.request(
+            "GET", "/api/v1/metrics/disease", paginate=True, limit=limit
+        )
+
+    def create_disease(self, data):
+        return self.request("POST", "/api/v1/metrics/disease", data=data)
+
+    def get_disease(self, disease_id):
+        return self.request("GET", f"/api/v1/metrics/disease/{disease_id}")
+
+    def get_disease_pain_levels(self, disease_id, limit=None):
+        return self.request(
+            "GET",
+            f"/api/v1/metrics/disease/{disease_id}/painLevel",
+            paginate=True,
+            limit=limit,
+        )
+
+    def create_disease_pain_level(self, disease_id, data):
+        return self.request(
+            "POST",
+            f"/api/v1/metrics/disease/{disease_id}/painLevel",
+            data=data,
+        )
+
+    def get_disease_pain_level(self, disease_id, pain_level_id):
+        return self.request(
+            "GET",
+            f"/api/v1/metrics/disease/{disease_id}/painLevel/{pain_level_id}",
+        )
+
     # Equipment Methods
     def get_equipment(self, limit=None):
         return self.request("GET", "/api/v1/equipment", paginate=True, limit=limit)
 
+    def create_equipment(self, data):
+        return self.request("POST", "/api/v1/equipment", data=data)
+
     def get_equipment_item(self, equipment_id):
         return self.request("GET", f"/api/v1/equipment/{equipment_id}")
+
+    def update_equipment(self, equipment_id, data):
+        return self.request("PATCH", f"/api/v1/equipment/{equipment_id}", data=data)
+
+    def delete_equipment(self, equipment_id):
+        return self.request("DELETE", f"/api/v1/equipment/{equipment_id}")
 
     def get_equipment_categories(self, limit=None):
         return self.request(
             "GET", "/api/v1/equipment/category", paginate=True, limit=limit
         )
 
+    def create_equipment_category(self, data):
+        return self.request("POST", "/api/v1/equipment/category", data=data)
+
     def get_equipment_category(self, category_id):
         return self.request("GET", f"/api/v1/equipment/category/{category_id}")
+
+    def update_equipment_category(self, category_id, data):
+        return self.request(
+            "PATCH", f"/api/v1/equipment/category/{category_id}", data=data
+        )
+
+    def delete_equipment_category(self, category_id):
+        return self.request("DELETE", f"/api/v1/equipment/category/{category_id}")
 
     def get_equipment_by_category(self, category_id, limit=None):
         return self.request(
@@ -215,8 +294,19 @@ class RunalyzeClient:
             "GET", "/api/v1/settings/date-range", paginate=True, limit=limit
         )
 
+    def create_settings_date_range(self, data):
+        return self.request("POST", "/api/v1/settings/date-range", data=data)
+
     def get_settings_date_range(self, range_id):
         return self.request("GET", f"/api/v1/settings/date-range/{range_id}")
+
+    def update_settings_date_range(self, range_id, data):
+        return self.request(
+            "PATCH", f"/api/v1/settings/date-range/{range_id}", data=data
+        )
+
+    def delete_settings_date_range(self, range_id):
+        return self.request("DELETE", f"/api/v1/settings/date-range/{range_id}")
 
     # Tag Methods
     def get_tags(self, limit=None):
@@ -228,3 +318,6 @@ class RunalyzeClient:
     # Statistics Methods
     def get_current_statistics(self):
         return self.request("GET", "/api/v1/statistics/current")
+
+    def get_race_prognosis(self):
+        return self.request("GET", "/api/v1/statistics/prognosis")

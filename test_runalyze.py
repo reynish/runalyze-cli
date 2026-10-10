@@ -966,3 +966,484 @@ def test_cli_activity_export_text(mock_get_client):
     assert data["format"] == "gpx"
     assert data["content"] == "<gpx></gpx>"
     assert "encoding" not in data
+
+
+# --- New API Spec Coverage Tests (Red Stage) ---
+
+
+@responses.activate
+def test_client_get_activity_with_trackdata():
+    client = RunalyzeClient("token")
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/activity/1?trackdata=true",
+        json={"id": 1, "trackdata": True},
+        status=200,
+    )
+    res = client.get_activity(1, trackdata=True)
+    assert res == {"id": 1, "trackdata": True}
+
+
+@responses.activate
+def test_client_get_activity_share_image():
+    client = RunalyzeClient("token")
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/activity/1/share/image/portrait",
+        body=b"imagebytes",
+        status=200,
+        headers={"Content-Type": "image/png"},
+    )
+    res = client.get_activity_share_image(1, "portrait")
+    assert res == b"imagebytes"
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_activity_get_trackdata(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_activity.return_value = {"id": 1, "trackdata": True}
+    mock_get_client.return_value = mock_client
+
+    result = runner.invoke(app, ["activity", "get", "1", "--trackdata"])
+    assert result.exit_code == 0
+    assert json.loads(result.stdout) == {"id": 1, "trackdata": True}
+    mock_client.get_activity.assert_called_once_with("1", trackdata=True)
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_activity_share_image_base64(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_activity_share_image.return_value = b"image_raw_data"
+    mock_get_client.return_value = mock_client
+
+    result = runner.invoke(app, ["activity", "share-image", "1", "portrait"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["format"] == "portrait"
+    assert data["encoding"] == "base64"
+    assert base64.b64decode(data["content"]) == b"image_raw_data"
+    mock_client.get_activity_share_image.assert_called_once_with("1", "portrait")
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_activity_share_image_output_file(mock_get_client, tmp_path):
+    mock_client = MagicMock()
+    mock_client.get_activity_share_image.return_value = b"image_file_bytes"
+    mock_get_client.return_value = mock_client
+
+    out_file = str(tmp_path / "share.png")
+    result = runner.invoke(
+        app, ["activity", "share-image", "1", "square", "--output", out_file]
+    )
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["format"] == "square"
+    assert data["output"] == out_file
+    with open(out_file, "rb") as f:
+        assert f.read() == b"image_file_bytes"
+
+
+@responses.activate
+def test_client_equipment_crud():
+    client = RunalyzeClient("token")
+    responses.add(
+        responses.POST,
+        "https://runalyze.com/api/v1/equipment",
+        json={"id": 10, "name": "Speed Shoe"},
+        status=201,
+    )
+    assert client.create_equipment({"name": "Speed Shoe"}) == {
+        "id": 10,
+        "name": "Speed Shoe",
+    }
+
+    responses.add(
+        responses.PATCH,
+        "https://runalyze.com/api/v1/equipment/10",
+        json={"id": 10, "notes": "retired"},
+        status=200,
+    )
+    assert client.update_equipment(10, {"notes": "retired"}) == {
+        "id": 10,
+        "notes": "retired",
+    }
+
+    responses.add(
+        responses.DELETE,
+        "https://runalyze.com/api/v1/equipment/10",
+        status=204,
+    )
+    assert client.delete_equipment(10) == {"status": "success"}
+
+
+@responses.activate
+def test_client_equipment_category_crud():
+    client = RunalyzeClient("token")
+    responses.add(
+        responses.POST,
+        "https://runalyze.com/api/v1/equipment/category",
+        json={"id": 5, "name": "Vests"},
+        status=201,
+    )
+    assert client.create_equipment_category({"name": "Vests"}) == {
+        "id": 5,
+        "name": "Vests",
+    }
+
+    responses.add(
+        responses.PATCH,
+        "https://runalyze.com/api/v1/equipment/category/5",
+        json={"id": 5, "name": "Hydration Vests"},
+        status=200,
+    )
+    assert client.update_equipment_category(5, {"name": "Hydration Vests"}) == {
+        "id": 5,
+        "name": "Hydration Vests",
+    }
+
+    responses.add(
+        responses.DELETE,
+        "https://runalyze.com/api/v1/equipment/category/5",
+        status=204,
+    )
+    assert client.delete_equipment_category(5) == {"status": "success"}
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_equipment_crud(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.create_equipment.return_value = {"id": 10, "name": "Pegasus"}
+    mock_client.update_equipment.return_value = {"id": 10, "notes": "retired"}
+    mock_client.delete_equipment.return_value = {"status": "success"}
+    mock_get_client.return_value = mock_client
+
+    # create
+    res = runner.invoke(app, ["equipment", "create", "name=Pegasus", "category_id=1"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"id": 10, "name": "Pegasus"}
+    mock_client.create_equipment.assert_called_once_with(
+        {"name": "Pegasus", "category_id": 1}
+    )
+
+    # update
+    res = runner.invoke(app, ["equipment", "update", "10", "notes=retired"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"id": 10, "notes": "retired"}
+    mock_client.update_equipment.assert_called_once_with("10", {"notes": "retired"})
+
+    # delete
+    res = runner.invoke(app, ["equipment", "delete", "10"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"status": "success"}
+    mock_client.delete_equipment.assert_called_once_with("10")
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_equipment_category_crud(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.create_equipment_category.return_value = {"id": 5, "name": "Vests"}
+    mock_client.update_equipment_category.return_value = {
+        "id": 5,
+        "name": "Hydration Vests",
+    }
+    mock_client.delete_equipment_category.return_value = {"status": "success"}
+    mock_get_client.return_value = mock_client
+
+    # category create
+    res = runner.invoke(app, ["equipment", "category-create", "name=Vests"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"id": 5, "name": "Vests"}
+    mock_client.create_equipment_category.assert_called_once_with({"name": "Vests"})
+
+    # category update
+    res = runner.invoke(
+        app, ["equipment", "category-update", "5", "name=Hydration Vests"]
+    )
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"id": 5, "name": "Hydration Vests"}
+    mock_client.update_equipment_category.assert_called_once_with(
+        "5", {"name": "Hydration Vests"}
+    )
+
+    # category delete
+    res = runner.invoke(app, ["equipment", "category-delete", "5"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"status": "success"}
+    mock_client.delete_equipment_category.assert_called_once_with("5")
+
+
+@responses.activate
+def test_client_bulk_upload_metrics():
+    client = RunalyzeClient("token")
+    responses.add(
+        responses.POST,
+        "https://runalyze.com/api/v1/metrics",
+        json={"status": "uploaded"},
+        status=201,
+    )
+    assert client.bulk_upload_metrics({"heartRateRest": [{"value": 60}]}) == {
+        "status": "uploaded"
+    }
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_metrics_bulk_upload(mock_get_client, tmp_path):
+    mock_client = MagicMock()
+    mock_client.bulk_upload_metrics.return_value = {"status": "uploaded"}
+    mock_get_client.return_value = mock_client
+
+    # props
+    res = runner.invoke(app, ["metrics", "bulk-upload", 'heartRateRest=[{"value":60}]'])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"status": "uploaded"}
+    mock_client.bulk_upload_metrics.assert_called_once_with(
+        {"heartRateRest": [{"value": 60}]}
+    )
+
+    # file
+    mock_client.bulk_upload_metrics.reset_mock()
+    json_file = tmp_path / "bulk.json"
+    json_file.write_text(json.dumps({"bodyComposition": [{"weight": 70}]}))
+    res = runner.invoke(app, ["metrics", "bulk-upload", "--file", str(json_file)])
+    assert res.exit_code == 0
+    mock_client.bulk_upload_metrics.assert_called_once_with(
+        {"bodyComposition": [{"weight": 70}]}
+    )
+
+
+@responses.activate
+def test_client_menstrual_cycle_forecast():
+    client = RunalyzeClient("token")
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/metrics/menstrualCycleForecast",
+        json={"average_cycle_length": 28.5},
+        status=200,
+    )
+    assert client.get_menstrual_cycle_forecast() == {"average_cycle_length": 28.5}
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_metrics_forecast(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_menstrual_cycle_forecast.return_value = {
+        "average_cycle_length": 28.5
+    }
+    mock_get_client.return_value = mock_client
+
+    res = runner.invoke(app, ["metrics", "forecast"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"average_cycle_length": 28.5}
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_metrics_latest_under_metrics(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_latest_metrics.return_value = {"hrv": {"value": 55}}
+    mock_get_client.return_value = mock_client
+
+    res = runner.invoke(app, ["metrics", "latest"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"hrv": {"value": 55}}
+
+
+@responses.activate
+def test_client_disease_and_pain_levels():
+    client = RunalyzeClient("token")
+    # Disease
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/metrics/disease",
+        json={"hydra:member": [{"id": 1, "title": "Runners Knee"}]},
+        status=200,
+    )
+    assert client.get_diseases() == [{"id": 1, "title": "Runners Knee"}]
+
+    responses.add(
+        responses.POST,
+        "https://runalyze.com/api/v1/metrics/disease",
+        json={"id": 2, "title": "Shin Splints"},
+        status=201,
+    )
+    assert client.create_disease(
+        {"title": "Shin Splints", "start_date": "2026-03-01"}
+    ) == {"id": 2, "title": "Shin Splints"}
+
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/metrics/disease/1",
+        json={"id": 1, "title": "Runners Knee"},
+        status=200,
+    )
+    assert client.get_disease(1) == {"id": 1, "title": "Runners Knee"}
+
+    # Pain Level
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/metrics/disease/1/painLevel",
+        json={"hydra:member": [{"id": 10, "pain_level": 4}]},
+        status=200,
+    )
+    assert client.get_disease_pain_levels(1) == [{"id": 10, "pain_level": 4}]
+
+    responses.add(
+        responses.POST,
+        "https://runalyze.com/api/v1/metrics/disease/1/painLevel",
+        json={"id": 11, "pain_level": 3},
+        status=201,
+    )
+    assert client.create_disease_pain_level(
+        1, {"pain_level": 3, "date": "2026-03-02"}
+    ) == {"id": 11, "pain_level": 3}
+
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/metrics/disease/1/painLevel/10",
+        json={"id": 10, "pain_level": 4},
+        status=200,
+    )
+    assert client.get_disease_pain_level(1, 10) == {"id": 10, "pain_level": 4}
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_disease_commands(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_diseases.return_value = [{"id": 1, "title": "Runners Knee"}]
+    mock_client.create_disease.return_value = {"id": 1, "title": "Runners Knee"}
+    mock_client.get_disease.return_value = {"id": 1, "title": "Runners Knee"}
+    mock_client.get_disease_pain_levels.return_value = [{"id": 10, "pain_level": 4}]
+    mock_client.create_disease_pain_level.return_value = {"id": 11, "pain_level": 3}
+    mock_client.get_disease_pain_level.return_value = {"id": 10, "pain_level": 4}
+    mock_get_client.return_value = mock_client
+
+    # list
+    res = runner.invoke(app, ["disease", "list"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == [{"id": 1, "title": "Runners Knee"}]
+
+    # get
+    res = runner.invoke(app, ["disease", "get", "1"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"id": 1, "title": "Runners Knee"}
+
+    # create
+    res = runner.invoke(
+        app, ["disease", "create", "title=Runners Knee", "start_date=2026-03-01"]
+    )
+    assert res.exit_code == 0
+    mock_client.create_disease.assert_called_once_with(
+        {"title": "Runners Knee", "start_date": "2026-03-01"}
+    )
+
+    # pain-level-list
+    res = runner.invoke(app, ["disease", "pain-level-list", "1"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == [{"id": 10, "pain_level": 4}]
+
+    # pain-level-create
+    res = runner.invoke(
+        app, ["disease", "pain-level-create", "1", "pain_level=3", "date=2026-03-02"]
+    )
+    assert res.exit_code == 0
+    mock_client.create_disease_pain_level.assert_called_once_with(
+        "1", {"pain_level": 3, "date": "2026-03-02"}
+    )
+
+    # pain-level-get
+    res = runner.invoke(app, ["disease", "pain-level-get", "1", "10"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"id": 10, "pain_level": 4}
+
+
+@responses.activate
+def test_client_settings_date_range_crud():
+    client = RunalyzeClient("token")
+    responses.add(
+        responses.POST,
+        "https://runalyze.com/api/v1/settings/date-range",
+        json={"id": 3, "name": "Current Year"},
+        status=201,
+    )
+    assert client.create_settings_date_range({"name": "Current Year"}) == {
+        "id": 3,
+        "name": "Current Year",
+    }
+
+    responses.add(
+        responses.PATCH,
+        "https://runalyze.com/api/v1/settings/date-range/3",
+        json={"id": 3, "name": "Year 2026"},
+        status=200,
+    )
+    assert client.update_settings_date_range(3, {"name": "Year 2026"}) == {
+        "id": 3,
+        "name": "Year 2026",
+    }
+
+    responses.add(
+        responses.DELETE,
+        "https://runalyze.com/api/v1/settings/date-range/3",
+        status=204,
+    )
+    assert client.delete_settings_date_range(3) == {"status": "success"}
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_settings_date_range_crud(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.create_settings_date_range.return_value = {
+        "id": 3,
+        "name": "Current Year",
+    }
+    mock_client.update_settings_date_range.return_value = {
+        "id": 3,
+        "name": "Year 2026",
+    }
+    mock_client.delete_settings_date_range.return_value = {"status": "success"}
+    mock_get_client.return_value = mock_client
+
+    # create
+    res = runner.invoke(app, ["settings", "date-range-create", "name=Current Year"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"id": 3, "name": "Current Year"}
+    mock_client.create_settings_date_range.assert_called_once_with(
+        {"name": "Current Year"}
+    )
+
+    # update
+    res = runner.invoke(app, ["settings", "date-range-update", "3", "name=Year 2026"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"id": 3, "name": "Year 2026"}
+    mock_client.update_settings_date_range.assert_called_once_with(
+        "3", {"name": "Year 2026"}
+    )
+
+    # delete
+    res = runner.invoke(app, ["settings", "date-range-delete", "3"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"status": "success"}
+    mock_client.delete_settings_date_range.assert_called_once_with("3")
+
+
+@responses.activate
+def test_client_race_prognosis():
+    client = RunalyzeClient("token")
+    responses.add(
+        responses.GET,
+        "https://runalyze.com/api/v1/statistics/prognosis",
+        json={"marathon": "3:15:00"},
+        status=200,
+    )
+    assert client.get_race_prognosis() == {"marathon": "3:15:00"}
+
+
+@patch("runalyze_cli.cli.get_client")
+def test_cli_statistics_prognosis(mock_get_client):
+    mock_client = MagicMock()
+    mock_client.get_race_prognosis.return_value = {"marathon": "3:15:00"}
+    mock_get_client.return_value = mock_client
+
+    res = runner.invoke(app, ["statistics", "prognosis"])
+    assert res.exit_code == 0
+    assert json.loads(res.stdout) == {"marathon": "3:15:00"}
+    mock_client.get_race_prognosis.assert_called_once()

@@ -60,8 +60,20 @@ jobs:
           echo "--- equipment list ---"
           uv run runalyze-cli equipment list
 
+          echo "--- equipment create ---"
+          uv run runalyze-cli equipment create name="New Shoe"
+
+          echo "--- disease list ---"
+          uv run runalyze-cli disease list
+
+          echo "--- metrics forecast ---"
+          uv run runalyze-cli metrics forecast
+
           echo "--- statistics current ---"
           uv run runalyze-cli statistics current
+
+          echo "--- statistics prognosis ---"
+          uv run runalyze-cli statistics prognosis
 
       - name: Stop mock server
         if: always()

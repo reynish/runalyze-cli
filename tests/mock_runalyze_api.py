@@ -22,19 +22,36 @@ class MockRunalyzeHandler(BaseHTTPRequestHandler):
         ("GET", "/api/v1/activity/1"): (200, {"id": 1, "title": "Morning Run", "sport": "running"}),
         # Export (returns text)
         ("GET", "/api/v1/activity/1/gpx"): (200, "<gpx><trk><name>Morning Run</name></trk></gpx>", "text/xml"),
+        ("GET", "/api/v1/activity/1/share/image/portrait"): (200, "imagedata", "image/png"),
+        ("GET", "/api/v1/activity/1/share/image/square"): (200, "imagedata", "image/png"),
         # Upload
         ("POST", "/api/v1/activities/uploads"): (201, {"id": "upload-123", "status": "pending"}),
         ("GET", "/api/v1/activities/uploads/upload-123"): (200, {"id": "upload-123", "status": "processed"}),
         # Metrics
+        ("POST", "/api/v1/metrics"): (201, {"status": "bulk_uploaded"}),
         ("GET", "/api/v1/metrics/heartRateRest"): (200, {"hydra:member": [{"id": 1, "value": 60}]}),
         ("GET", "/api/v1/metrics/heartRateRest/1"): (200, {"id": 1, "value": 60}),
         ("POST", "/api/v1/metrics/heartRateRest"): (201, {"id": 2, "value": 55}),
         ("GET", "/api/v1/metrics/latest"): (200, {"heartRateRest": {"value": 58}}),
+        ("GET", "/api/v1/metrics/menstrualCycleForecast"): (200, {"average_cycle_length": 28.5}),
+        # Disease & Pain Level
+        ("GET", "/api/v1/metrics/disease"): (200, {"hydra:member": [{"id": 1, "title": "Runners Knee"}]}),
+        ("POST", "/api/v1/metrics/disease"): (201, {"id": 1, "title": "Runners Knee"}),
+        ("GET", "/api/v1/metrics/disease/1"): (200, {"id": 1, "title": "Runners Knee"}),
+        ("GET", "/api/v1/metrics/disease/1/painLevel"): (200, {"hydra:member": [{"id": 1, "pain_level": 3}]}),
+        ("POST", "/api/v1/metrics/disease/1/painLevel"): (201, {"id": 1, "pain_level": 3}),
+        ("GET", "/api/v1/metrics/disease/1/painLevel/1"): (200, {"id": 1, "pain_level": 3}),
         # Equipment
         ("GET", "/api/v1/equipment"): (200, {"hydra:member": [{"id": 1, "name": "Nike Pegasus"}]}),
+        ("POST", "/api/v1/equipment"): (201, {"id": 2, "name": "New Shoe"}),
         ("GET", "/api/v1/equipment/1"): (200, {"id": 1, "name": "Nike Pegasus"}),
+        ("PATCH", "/api/v1/equipment/1"): (200, {"id": 1, "name": "Updated Shoe"}),
+        ("DELETE", "/api/v1/equipment/1"): (204, ""),
         ("GET", "/api/v1/equipment/category"): (200, {"hydra:member": [{"id": 1, "name": "Shoes"}]}),
+        ("POST", "/api/v1/equipment/category"): (201, {"id": 2, "name": "New Category"}),
         ("GET", "/api/v1/equipment/category/1"): (200, {"id": 1, "name": "Shoes"}),
+        ("PATCH", "/api/v1/equipment/category/1"): (200, {"id": 1, "name": "Updated Category"}),
+        ("DELETE", "/api/v1/equipment/category/1"): (204, ""),
         ("GET", "/api/v1/equipment/category/1/equipment"): (200, {"hydra:member": [{"id": 1, "name": "Nike Pegasus"}]}),
         # Race results
         ("GET", "/api/v1/raceresult"): (200, {"hydra:member": []}),
@@ -42,8 +59,13 @@ class MockRunalyzeHandler(BaseHTTPRequestHandler):
         ("GET", "/api/v1/tag"): (200, {"hydra:member": []}),
         # Settings
         ("GET", "/api/v1/settings/date-range"): (200, {"hydra:member": []}),
+        ("POST", "/api/v1/settings/date-range"): (201, {"id": 1, "name": "2026"}),
+        ("GET", "/api/v1/settings/date-range/1"): (200, {"id": 1, "name": "2026"}),
+        ("PATCH", "/api/v1/settings/date-range/1"): (200, {"id": 1, "name": "2026 Updated"}),
+        ("DELETE", "/api/v1/settings/date-range/1"): (204, ""),
         # Statistics
         ("GET", "/api/v1/statistics/current"): (200, {"weekDistance": 42.5}),
+        ("GET", "/api/v1/statistics/prognosis"): (200, {"marathon": "3:15:00"}),
         # Services (used for the install verification)
         ("GET", "/api/v1/my/services"): (200, ["activity", "metrics", "equipment"]),
         # Sync
