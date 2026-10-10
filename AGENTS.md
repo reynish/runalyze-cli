@@ -10,7 +10,7 @@ You must use a Test-Driven Development approach for all changes.
 
 ## 2. Use `uv` Exclusively
 We use `uv` for all environment management, dependency resolution, and script execution.
-*   **Running Scripts**: Always prefix script execution with `uv run` (e.g., `uv run runalyze.py`).
+*   **Running Scripts**: Always prefix script execution with `uv run` (e.g., `uv run runalyze-cli --help`).
 *   **Running Tests**: Always run tests using `uv run pytest`.
 *   **Dependencies**: Manage dependencies using `uv add` or `uv pip`. Do not use standard `pip` or `venv`.
 
